@@ -24,7 +24,11 @@ protected:
 private:
 	ACubePlayerController();
 
-	void Moving();
+	void LeftMove();
+	void RightMove();
+	void ForwardMove();
+	void BackwardMove();
+	void Moving(const FVector& Direction);
 	
 private:
 	/** Mapping Context */
@@ -33,7 +37,13 @@ private:
 
 	/** Input Action for Action A */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	UInputAction* ActionA;
+	UInputAction* ActionLeftMove;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	UInputAction* ActionRigthMove;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	UInputAction* ActionForwardMove;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	UInputAction* ActionBackwardMove;
 
 	UPROPERTY(EditAnywhere)
 	float RollDuration = 0.25f;

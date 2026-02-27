@@ -27,12 +27,16 @@ void ACubePlayerController::SetupInputComponent()
     // Cast the default InputComponent to EnhancedInputComponent
     if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent))
     {
-        // Bind the Action A input to the C++ function HandleActionA
-        if (ActionA)
-        {
-            // Bind the "Triggered" event of the Input Action
-            EnhancedInputComponent->BindAction(ActionA, ETriggerEvent::Triggered, this, &ACubePlayerController::Moving);
-        }
+        check(ActionLeftMove);
+        check(ActionRigthMove);
+        check(ActionForwardMove);
+        check(ActionBackwardMove);
+
+        // Bind the "Triggered" event of the Input Action
+        EnhancedInputComponent->BindAction(ActionLeftMove, ETriggerEvent::Triggered, this, &ACubePlayerController::LeftMove);
+        EnhancedInputComponent->BindAction(ActionRigthMove, ETriggerEvent::Triggered, this, &ACubePlayerController::RightMove);
+        EnhancedInputComponent->BindAction(ActionForwardMove, ETriggerEvent::Triggered, this, &ACubePlayerController::ForwardMove);
+        EnhancedInputComponent->BindAction(ActionBackwardMove, ETriggerEvent::Triggered, this, &ACubePlayerController::BackwardMove);
     }
 }
 UE_DISABLE_OPTIMIZATION
@@ -76,14 +80,36 @@ ACubePlayerController::ACubePlayerController()
     bIsMoving = false;
 }
 
+void ACubePlayerController::LeftMove()
+{
+    FVector Direction = FVector::LeftVector;
+    Moving(Direction);
+}
 
-void ACubePlayerController::Moving()
+void ACubePlayerController::RightMove()
+{
+    FVector Direction = FVector::RightVector;
+    Moving(Direction);
+}
+
+void ACubePlayerController::ForwardMove()
+{
+    FVector Direction = FVector::ForwardVector;
+    Moving(Direction);
+}
+
+void ACubePlayerController::BackwardMove()
+{
+    FVector Direction = FVector::BackwardVector;
+    Moving(Direction);
+}
+
+void ACubePlayerController::Moving(const FVector& Direction)
 {
     if (bIsMoving)
     {
         return;
     }
-
     APawn* ControlledPawn = GetPawn();
     if (!ControlledPawn)
         return;
@@ -94,7 +120,6 @@ void ACubePlayerController::Moving()
     StartLocation = ControlledPawn->GetActorLocation();
     StartRotation = ControlledPawn->GetActorRotation();
 
-    FVector Direction = FVector::LeftVector;
 
     RollAxis = FVector::CrossProduct(FVector::UpVector, Direction);
 
