@@ -103,8 +103,6 @@ void ACubePlayerController::Tick(float DeltaTime)
     {
         bIsMoving = false;
     }
-
-    
 }
 
 ACubePlayerController::ACubePlayerController()
