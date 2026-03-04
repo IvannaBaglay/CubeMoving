@@ -7,7 +7,7 @@
 #include "CubeCharacter.generated.h"
 
 UCLASS()
-class CUBEMOVING_API ACubeCharacter : public ACharacter
+class CUBEMOVING_API ACubeCharacter : public APawn
 {
 	GENERATED_BODY()
 
@@ -28,4 +28,5 @@ public:
 
 private:
 	void GetComponentOrientedBoundingBox(USceneComponent* Component, FVector& Origin, FVector& Extent);
+	void DrawDebugVectors();
 };
