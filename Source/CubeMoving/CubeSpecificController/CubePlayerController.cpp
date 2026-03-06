@@ -6,6 +6,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Pawn.h"
+#include "CubeCharacter/CubeCharacter.h"
 
 #include "InputActionValue.h"
 
@@ -31,12 +32,14 @@ void ACubePlayerController::SetupInputComponent()
         check(ActionRigthMove);
         check(ActionForwardMove);
         check(ActionBackwardMove);
+        check(ActionDiagonalBackLeftMove);
 
         // Bind the "Triggered" event of the Input Action
         EnhancedInputComponent->BindAction(ActionLeftMove, ETriggerEvent::Triggered, this, &ACubePlayerController::LeftMove);
         EnhancedInputComponent->BindAction(ActionRigthMove, ETriggerEvent::Triggered, this, &ACubePlayerController::RightMove);
         EnhancedInputComponent->BindAction(ActionForwardMove, ETriggerEvent::Triggered, this, &ACubePlayerController::ForwardMove);
         EnhancedInputComponent->BindAction(ActionBackwardMove, ETriggerEvent::Triggered, this, &ACubePlayerController::BackwardMove);
+        EnhancedInputComponent->BindAction(ActionDiagonalBackLeftMove, ETriggerEvent::Triggered, this, &ACubePlayerController::DiagonalBackLeftMove);
     }
 }
 UE_DISABLE_OPTIMIZATION
@@ -48,6 +51,8 @@ void ACubePlayerController::Tick(float DeltaTime)
     APawn* ControlledPawn = GetPawn();
     if (!ControlledPawn)
         return;
+
+    DrawCubeVertex();
 
     const FVector ActorLocation = ControlledPawn->GetActorLocation();
     const FVector ActorForwardVector = ControlledPawn->GetActorForwardVector();
@@ -96,6 +101,7 @@ void ACubePlayerController::Tick(float DeltaTime)
     FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();
 
 
+
     ControlledPawn->SetActorLocation(NewLocation);
     ControlledPawn->SetActorRotation(NewRotation);
 
@@ -134,6 +140,12 @@ void ACubePlayerController::BackwardMove()
     Moving(Direction);
 }
 
+void ACubePlayerController::DiagonalBackLeftMove()
+{
+    FVector Direction = FVector::BackwardVector + FVector::LeftVector;
+    Moving(Direction);
+}
+
 void ACubePlayerController::Moving(const FVector& Direction)
 {
     if (bIsMoving)
@@ -154,10 +166,38 @@ void ACubePlayerController::Moving(const FVector& Direction)
     RollAxis = FVector::CrossProduct(FVector::UpVector, Direction);
 
 
+    // Get Real Actor Size
+    
+    AActor* Actor = GetPawn();
+    ACubeCharacter* CubeCharacter = CastChecked<ACubeCharacter>(Actor);
 
+    FVector ActorCubeSize;
+    FVector OriginLocation;
+
+    CubeCharacter->GetComponentOrientedBoundingBox(OriginLocation, ActorCubeSize); // Actor cube size from bound is a half of full size
+
+    // Botton Middle point
     RollPivot = StartLocation
-        + (Direction * CubeSize * 0.5f)
-        - (FVector::UpVector * CubeSize * 0.5f);
+        + (Direction * ActorCubeSize)
+        - (FVector::UpVector * ActorCubeSize);
+}
+
+void ACubePlayerController::DrawCubeVertex()
+{
+    AActor* Actor = GetPawn();
+    ACubeCharacter* CubeCharacter = CastChecked<ACubeCharacter>(Actor);
+
+    FVector ActorCubeSize;
+    FVector OriginLocation;
+
+    CubeCharacter->GetComponentOrientedBoundingBox(OriginLocation, ActorCubeSize); // Actor cube size from bound is a half of full size
+
+    FVector PivotBottonLeft = OriginLocation + (-FVector::UpVector * ActorCubeSize) + FVector::LeftVector * ActorCubeSize + FVector::BackwardVector * ActorCubeSize;
+
+
+    DrawDebugPoint(GetWorld(), PivotBottonLeft, /*Size*/ 5.f, FColor::Black, false, 0.01f, 1);
+
+
 }
 
 UE_ENABLE_OPTIMIZATION

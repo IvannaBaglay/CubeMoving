@@ -31,15 +31,17 @@ void ACubeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 
 }
 
-void ACubeCharacter::GetComponentOrientedBoundingBox(USceneComponent* Component, FVector& Origin, FVector& Extent)
+// TODO: Add a search of cube in more complex structure
+// Currently it use a root component
+void ACubeCharacter::GetComponentOrientedBoundingBox(FVector& Origin, FVector& Extent)
 {
 	// Calculate the right world origin
 	FVector ComponentExtent;
 	float ComponentRadius;
-	UKismetSystemLibrary::GetComponentBounds(Component, Origin, ComponentExtent, ComponentRadius);
+	UKismetSystemLibrary::GetComponentBounds(GetRootComponent(), Origin, ComponentExtent, ComponentRadius);
 
 	// Calculate the right extent
-	auto Box = Component->GetOwner()->CalculateComponentsBoundingBoxInLocalSpace();
+	auto Box = GetRootComponent()->GetOwner()->CalculateComponentsBoundingBoxInLocalSpace();
 	Extent = Box.GetExtent();
 }
 

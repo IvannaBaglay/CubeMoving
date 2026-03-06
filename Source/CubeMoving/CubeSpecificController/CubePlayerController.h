@@ -28,9 +28,12 @@ private:
 	void RightMove();
 	void ForwardMove();
 	void BackwardMove();
+	void DiagonalBackLeftMove();
 	void Moving(const FVector& Direction);
 	
 private:
+	void DrawCubeVertex();
+
 	/** Mapping Context */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	UInputMappingContext* DefaultMappingContext;
@@ -44,10 +47,14 @@ private:
 	UInputAction* ActionForwardMove;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	UInputAction* ActionBackwardMove;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
+	UInputAction* ActionDiagonalBackLeftMove;
+
 
 	UPROPERTY(EditAnywhere)
 	float RollDuration = 0.25f;
 
+	/*[DEPRICATED]*/
 	UPROPERTY(EditAnywhere)
 	float CubeSize = 100.f;
 

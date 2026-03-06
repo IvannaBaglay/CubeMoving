@@ -26,7 +26,8 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	void GetComponentOrientedBoundingBox(FVector& Origin, FVector& Extent);
+
 private:
-	void GetComponentOrientedBoundingBox(USceneComponent* Component, FVector& Origin, FVector& Extent);
 	void DrawDebugVectors();
 };
