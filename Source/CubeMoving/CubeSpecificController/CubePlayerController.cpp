@@ -68,7 +68,7 @@ void ACubePlayerController::Tick(float DeltaTime)
     // RollAxis
     DrawDebugLine(GetWorld(), ActorLocation, ActorLocation + 100 * RollAxis, FColor::Cyan, false, 0.01f, 1, /*Thickness*/ 2.f);
     //RollPivot
-    DrawDebugPoint(GetWorld(), RollPivot, /*Size*/ 5.f, FColor::Cyan, false, 0.01f, 1);
+    DrawDebugPoint(GetWorld(), RollPivot, /*Size*/ 5.f, FColor::Cyan, false, 5.f, 1);
 
 
     if (!bIsMoving)
@@ -89,12 +89,22 @@ void ACubePlayerController::Tick(float DeltaTime)
     
     // Get a vector which will be rotating
     FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/ 
-    DrawDebugLine(GetWorld(), StartLocation, StartLocation + Offset, FColor::Yellow, false, 0.01f, 1, 2.f);
+    DrawDebugLine(GetWorld(), StartLocation, RollPivot, FColor::Yellow, false, 0.01f, 1, 2.f);
+
+
 
     FVector RotatedOffset = Offset.RotateAngleAxis(Angle, RollAxis); /*rotating around start vector point(in my case pivot)*/
-    DrawDebugLine(GetWorld(), StartLocation, StartLocation + RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
+
+    // Zero location
+    DrawDebugLine(GetWorld(), FVector::ZeroVector, Offset, FColor::Yellow, false, 0.01f, 1, 2.f);
+    DrawDebugLine(GetWorld(), FVector::ZeroVector, RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
+
+
 
     FVector NewLocation = RollPivot + RotatedOffset;
+
+    DrawDebugLine(GetWorld(), RollPivot, RollPivot + RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
+
     DrawDebugPoint(GetWorld(), NewLocation, /*Size*/ 25.f, FColor::Orange, false, 0.01f, 2);
 
     FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
@@ -196,6 +206,8 @@ void ACubePlayerController::DrawCubeVertex()
 
 
     DrawDebugPoint(GetWorld(), PivotBottonLeft, /*Size*/ 5.f, FColor::Black, false, 0.01f, 1);
+
+    DrawDebugLine(GetWorld(), OriginLocation, PivotBottonLeft, FColor::Black, false, 0.01f, 1, 2.f);
 
 
 }
