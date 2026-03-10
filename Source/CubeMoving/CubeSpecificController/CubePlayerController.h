@@ -30,6 +30,7 @@ private:
 	void BackwardMove();
 	void DiagonalBackLeftMove();
 	void Moving(const FVector& Direction);
+	void DiagonalMoving(const FVector& DirectionA, const FVector& DirectionB);
 	
 private:
 	void DrawCubeVertex();
