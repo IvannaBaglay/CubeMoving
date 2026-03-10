@@ -34,6 +34,9 @@ private:
 	
 private:
 	void DrawCubeVertex();
+	void DrawActorCoordinates();
+	void QuickDiagonalRotation(float DeltaTime);
+	void Rolling(float DeltaTime);
 
 	/** Mapping Context */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
@@ -54,13 +57,14 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	float RollDuration = 0.25f;
-
-	/*[DEPRICATED]*/
 	UPROPERTY(EditAnywhere)
-	float CubeSize = 100.f;
+	float RollCooldown = 0.25f;
 
 	bool bIsMoving = false;
 	float CurrentRollTime = 0.f;
+	float CurrentRollCooldown = 0.f;
+
+	const float TargetAngle = 90.f;
 
 	FVector RollPivot;
 	FVector RollAxis;

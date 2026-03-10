@@ -44,42 +44,12 @@ void ACubePlayerController::SetupInputComponent()
 }
 UE_DISABLE_OPTIMIZATION
 
-void ACubePlayerController::Tick(float DeltaTime)
+void ACubePlayerController::DrawActorCoordinates()
 {
-    Super::Tick(DeltaTime);
-
     APawn* ControlledPawn = GetPawn();
     if (!ControlledPawn)
         return;
 
-    if (!bIsMoving)
-            return;
-
-
-    // Check if position in 90 degree angle is reached
-    // Looks like it works ok if I do it in one step
-    // Then issue can be in interpolation
-    FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(90.f));
-    FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();
-
-    FVector Offset = StartLocation - RollPivot;
-    FVector RotatedOffset = Offset.RotateAngleAxis(90.f, RollAxis); /*rotating around start vector point(in my case pivot)*/
-
-    // Zero location
-    DrawDebugLine(GetWorld(), FVector::ZeroVector, Offset, FColor::Yellow, false, 0.01f, 1, 2.f);
-    DrawDebugLine(GetWorld(), FVector::ZeroVector, RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
-
-
-
-    FVector NewLocation = RollPivot + RotatedOffset;
-
-    FTransform NewTransform;
-    NewTransform.SetLocation(NewLocation);
-    NewTransform.SetRotation(NewRotation);
-
-    ControlledPawn->SetActorTransform(NewTransform);
-
-    //
     DrawCubeVertex();
 
     const FVector ActorLocation = ControlledPawn->GetActorLocation();
@@ -93,72 +63,116 @@ void ACubePlayerController::Tick(float DeltaTime)
     DrawDebugLine(GetWorld(), ActorLocation, ActorLocation + 100 * ActorRightVector, FColor::Green, false, 0.01f, 0, 2.f);
     DrawDebugLine(GetWorld(), ActorLocation, ActorLocation + 100 * ActorUpVector, FColor::Blue, false, 0.01f, 0, 2.f);
 
+    DrawDebugPoint(GetWorld(), RollPivot, /*Size*/ 5.f, FColor::Cyan, false, 5.f, 1);
+}
+
+void ACubePlayerController::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    if (!bIsMoving)
+        return;
+    DrawActorCoordinates();
+    //Rolling(DeltaTime);
+
+    QuickDiagonalRotation(DeltaTime);
+}
+
+void ACubePlayerController::Rolling(float DeltaTime)
+{
+    APawn* ControlledPawn = GetPawn();
+    if (!ControlledPawn)
+        return;
+
+    const FVector ActorLocation = ControlledPawn->GetActorLocation();
+
     // RollAxis
     DrawDebugLine(GetWorld(), ActorLocation, ActorLocation + 100 * RollAxis, FColor::Cyan, false, 0.01f, 1, /*Thickness*/ 2.f);
     //RollPivot
-    DrawDebugPoint(GetWorld(), RollPivot, /*Size*/ 5.f, FColor::Cyan, false, 5.f, 1);
+
+    // Main Code
+    CurrentRollTime = FMath::Min(CurrentRollTime + DeltaTime, RollDuration);;
+
+    float Alpha = CurrentRollTime / RollDuration;
+    float Angle = (TargetAngle - 1.f) * Alpha;
+
+    // Debug info
+    const FString AlphaString = FString::Printf(TEXT("Alpha: %f"), Alpha);
+    UE_LOG(LogTemp, Warning, TEXT("Alpha: %f"), Alpha);
+    const FString AngleString = FString::Printf(TEXT("Angle: %f"), Angle);
+    UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), Angle);
+    DrawDebugString(GetWorld(), ActorLocation, *AlphaString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
+    DrawDebugString(GetWorld(), ActorLocation + FVector::UpVector * 20, *AngleString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
+    //
+
+    // Get a vector which will be rotating
+    FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/
+    DrawDebugLine(GetWorld(), StartLocation, RollPivot, FColor::Yellow, false, 0.01f, 1, 2.f);
+
+    FVector RotatedOffset = Offset.RotateAngleAxis(Angle, RollAxis); /*rotating around start vector point(in my case pivot)*/
+
+    // Zero location
+    DrawDebugLine(GetWorld(), FVector::ZeroVector, Offset, FColor::Yellow, false, 0.01f, 1, 2.f);
+    DrawDebugLine(GetWorld(), FVector::ZeroVector, RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
+
+    FVector NewLocation = RollPivot + RotatedOffset;
+
+    DrawDebugLine(GetWorld(), RollPivot, RollPivot + RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
+
+    DrawDebugPoint(GetWorld(), NewLocation, /*Size*/ 25.f, FColor::Orange, false, 0.01f, 2);
+
+    FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
+    FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();
+
+    FTransform NewTransform;
+    NewTransform.SetLocation(NewLocation);
+    NewTransform.SetRotation(NewRotation);
+
+    ControlledPawn->SetActorTransform(NewTransform);
+
+    if (FMath::IsNearlyZero((Alpha - 1.f), UE_SMALL_NUMBER))
+    {
+        bIsMoving = false;
+    }
+}
+
+// TODO: Rewrite with using FTransform interpolation, not interpolation of location and rotation separately.
+void ACubePlayerController::QuickDiagonalRotation(float DeltaTime)
+{
+
+    APawn* ControlledPawn = GetPawn();
+    if (!ControlledPawn)
+        return;
+
+    CurrentRollCooldown = CurrentRollCooldown + DeltaTime;
+    UE_LOG(LogTemp, Warning, TEXT("CurrentRollCooldown: %f"), CurrentRollCooldown);
+
+    //if (RollCooldown - CurrentRollCooldown > 0.f )
+    //{
+    //    return;
+    //}
+
+    // Check if position in 90 degree angle is reached
+    // Looks like it works ok if I do it in one step
+    // Then issue can be in interpolation, not interpolation
+    // If I add any cooldown transform doesn't work correctly
+    FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/
+
+    FQuat DeltaQuatCorrect = FQuat(RollAxis, FMath::DegreesToRadians(90.f));
+    FQuat NewRotationCorrect = DeltaQuatCorrect * StartRotation.Quaternion();
+    FVector RotatedOffsetCorrect = Offset.RotateAngleAxis(90.f, RollAxis); /*rotating around start vector point(in my case pivot)*/
+
+
+    FVector NewLocationCorrect = RollPivot + RotatedOffsetCorrect;
+
+    FTransform NewTransformCorrect;
+    NewTransformCorrect.SetLocation(NewLocationCorrect);
+    NewTransformCorrect.SetRotation(NewRotationCorrect);
+
+    ControlledPawn->SetActorTransform(NewTransformCorrect);
 
     //bIsMoving = false;
-
-    //if (!bIsMoving)
-    //    return;
-    //
-    //
-    //CurrentRollTime = FMath::Min(CurrentRollTime + DeltaTime, RollDuration);;
-    //
-    //float Alpha = CurrentRollTime / RollDuration;
-    //float Angle = 90.f * Alpha;
-    //
-    //// Debug info
-    //const FString AlphaString = FString::Printf(TEXT("Alpha: %f"), Alpha);
-    //UE_LOG(LogTemp, Warning, TEXT("Alpha: %f"), Alpha);
-    //const FString AngleString = FString::Printf(TEXT("Angle: %f"), Angle);
-    //UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), Angle);
-    //DrawDebugString(GetWorld(), ActorLocation, *AlphaString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
-    //DrawDebugString(GetWorld(), ActorLocation + FVector::UpVector * 20, *AngleString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
-    ////
-    //
-    //// Get a vector which will be rotating
-    //FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/ 
-    //DrawDebugLine(GetWorld(), StartLocation, RollPivot, FColor::Yellow, false, 0.01f, 1, 2.f);
-    //
-    //
-    //
-    //FVector RotatedOffset = Offset.RotateAngleAxis(Angle, RollAxis); /*rotating around start vector point(in my case pivot)*/
-    //
-    //// Zero location
-    //DrawDebugLine(GetWorld(), FVector::ZeroVector, Offset, FColor::Yellow, false, 0.01f, 1, 2.f);
-    //DrawDebugLine(GetWorld(), FVector::ZeroVector, RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
-    //
-    //
-    //
-    //FVector NewLocation = RollPivot + RotatedOffset;
-    //
-    //DrawDebugLine(GetWorld(), RollPivot, RollPivot + RotatedOffset, FColor::Orange, false, 0.01f, 1, 2.f);
-    //
-    //DrawDebugPoint(GetWorld(), NewLocation, /*Size*/ 25.f, FColor::Orange, false, 0.01f, 2);
-    //
-    //FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
-    //FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();
-    //
-    //
-    //FTransform NewTransform;
-    //NewTransform.SetLocation(NewLocation);
-    //NewTransform.SetRotation(NewRotation);
-    //
-    //ControlledPawn->SetActorTransform(NewTransform);
-    //
-    ////ControlledPawn->SetActorLocation(NewLocation);
-    ////ControlledPawn->SetActorRotation(NewRotation);
-    //
-    //if (FMath::IsNearlyZero((Alpha - 1.f), UE_SMALL_NUMBER))
-    //{
-    //    bIsMoving = false;
-    //
-    //    //DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(90.f));
-    //    //NewRotation = DeltaQuat * StartRotation.Quaternion();
-    //    //ControlledPawn->SetActorRotation(NewRotation);
-    //}
+    CurrentRollCooldown = 0.f;
 }
 
 ACubePlayerController::ACubePlayerController()
