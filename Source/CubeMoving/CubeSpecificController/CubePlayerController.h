@@ -36,7 +36,9 @@ private:
 	void DrawCubeVertex();
 	void DrawActorCoordinates();
 	void QuickDiagonalRotation(float DeltaTime);
+	void CooldownkDiagonalRotation(float DeltaTime);
 	void Rolling(float DeltaTime);
+    void TransformRolling(float DeltaTime);
 
 	/** Mapping Context */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
@@ -64,7 +66,12 @@ private:
 	float CurrentRollTime = 0.f;
 	float CurrentRollCooldown = 0.f;
 
-	const float TargetAngle = 90.f;
+	UPROPERTY(EditAnywhere)
+
+	float TargetAngle = 360.f;
+
+	FQuat TargetQuat;
+	FVector FinalLocation;
 
 	FVector RollPivot;
 	FVector RollAxis;

@@ -7,6 +7,8 @@
 #include "EnhancedInputComponent.h"
 #include "GameFramework/Pawn.h"
 #include "CubeCharacter/CubeCharacter.h"
+#include "Quaternion.h"
+#include "Kismet/GameplayStatics.h"
 
 #include "InputActionValue.h"
 
@@ -70,19 +72,69 @@ void ACubePlayerController::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 
+    APawn* ControlledPawn = GetPawn();
+    if (!ControlledPawn)
+        return;
+
+    UE_LOG(LogTemp, Warning, TEXT("Actor Location: X %f, Y %f, Z %f"), ControlledPawn->GetActorLocation().X, ControlledPawn->GetActorLocation().Y, ControlledPawn->GetActorLocation().Z);
+    UE_LOG(LogTemp, Warning, TEXT("Actor Rotation: Pitch %f, Roll %f, Yaw %f"), ControlledPawn->GetActorRotation().Pitch, ControlledPawn->GetActorRotation().Roll, ControlledPawn->GetActorRotation().Yaw);
+
+    DrawActorCoordinates();
+
     if (!bIsMoving)
         return;
-    DrawActorCoordinates();
-    //Rolling(DeltaTime);
+    Rolling(DeltaTime);
 
-    QuickDiagonalRotation(DeltaTime);
+    //QuickDiagonalRotation(DeltaTime);
+    //CooldownkDiagonalRotation(DeltaTime);
+    //TransformRolling(DeltaTime);
+}
+
+// The issue was in euler normalization TODO: rewrite all using Matrix
+
+void ACubePlayerController::TransformRolling(float DeltaTime)
+{
+    APawn* ControlledPawn = GetPawn();
+    if (!ControlledPawn)
+        return;
+
+    RollAxis = RollAxis.GetSafeNormal();
+
+    CurrentRollTime = FMath::Min(CurrentRollTime + DeltaTime, RollDuration);;
+    float Alpha = CurrentRollTime / RollDuration;
+    float Angle = TargetAngle * Alpha;
+
+    // Debug info
+    const FString AlphaString = FString::Printf(TEXT("Alpha: %f"), Alpha);
+    UE_LOG(LogTemp, Warning, TEXT("Alpha: %f"), Alpha);
+    const FString AngleString = FString::Printf(TEXT("Angle: %f"), Angle);
+    UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), Angle);
+
+    const FTransform& CurrentTransform = ControlledPawn->GetActorTransform();
+    FTransform NewTransform(CurrentTransform);
+
+    /*FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
+    FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();*/
+     
+    NewTransform.SetRotation(StartRotation.Quaternion() + FQuat(RollAxis, FMath::DegreesToRadians(Angle)));
+   
+
+
+    //  
+    ControlledPawn->SetActorTransform(NewTransform);
+    //ENGINE_API bool SetActorTransform(const FTransform& NewTransform, bool bSweep=false, FHitResult* OutSweepHitResult=nullptr, ETeleportType Teleport = ETeleportType::None);
+
+    if (Alpha >= 1.f)
+    {
+        bIsMoving = false;
+    }
 }
 
 void ACubePlayerController::Rolling(float DeltaTime)
 {
     APawn* ControlledPawn = GetPawn();
-    if (!ControlledPawn)
-        return;
+    
+    RollAxis = RollAxis.GetSafeNormal();
 
     const FVector ActorLocation = ControlledPawn->GetActorLocation();
 
@@ -94,13 +146,13 @@ void ACubePlayerController::Rolling(float DeltaTime)
     CurrentRollTime = FMath::Min(CurrentRollTime + DeltaTime, RollDuration);;
 
     float Alpha = CurrentRollTime / RollDuration;
-    float Angle = (TargetAngle - 1.f) * Alpha;
+    float Angle = TargetAngle * Alpha;
 
     // Debug info
     const FString AlphaString = FString::Printf(TEXT("Alpha: %f"), Alpha);
-    UE_LOG(LogTemp, Warning, TEXT("Alpha: %f"), Alpha);
+    //UE_LOG(LogTemp, Warning, TEXT("Alpha: %f"), Alpha);
     const FString AngleString = FString::Printf(TEXT("Angle: %f"), Angle);
-    UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), Angle);
+    //UE_LOG(LogTemp, Warning, TEXT("Angle: %f"), Angle);
     DrawDebugString(GetWorld(), ActorLocation, *AlphaString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
     DrawDebugString(GetWorld(), ActorLocation + FVector::UpVector * 20, *AngleString, nullptr, FColor::Cyan, 0.01f, false, 2.f);
     //
@@ -121,23 +173,46 @@ void ACubePlayerController::Rolling(float DeltaTime)
 
     DrawDebugPoint(GetWorld(), NewLocation, /*Size*/ 25.f, FColor::Orange, false, 0.01f, 2);
 
-    FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
-    FQuat NewRotation = DeltaQuat * StartRotation.Quaternion();
+    
 
-    FTransform NewTransform;
-    NewTransform.SetLocation(NewLocation);
-    NewTransform.SetRotation(NewRotation);
+    //FQuat DeltaQuat = FQuat(RollAxis, FMath::DegreesToRadians(Angle));
+    
+    FQuat NewRotation = FQuat::Slerp(StartRotation.Quaternion(), TargetQuat, Alpha);
 
-    ControlledPawn->SetActorTransform(NewTransform);
+    //FTransform NewTransform;
+    //NewTransform.SetLocation(NewLocation);
+    //NewTransform.SetRotation(NewRotation);
+    //
+    //ControlledPawn->SetActorTransform(NewTransform);
+
+    ControlledPawn->SetActorRotation(NewRotation);
+    ControlledPawn->SetActorLocation(NewLocation);
 
     if (FMath::IsNearlyZero((Alpha - 1.f), UE_SMALL_NUMBER))
     {
         bIsMoving = false;
+
+        ControlledPawn->SetActorTransform(FTransform(TargetQuat, FinalLocation));
+        UE_LOG(LogTemp, Warning, TEXT("Rolling done"));
+
+        //UGameplayStatics::SetGamePaused(GetWorld(), true);
     }
 }
 
-// TODO: Rewrite with using FTransform interpolation, not interpolation of location and rotation separately.
 void ACubePlayerController::QuickDiagonalRotation(float DeltaTime)
+{
+    // Separatly it works
+    APawn* ControlledPawn = GetPawn();
+    if (!ControlledPawn)
+        return;
+
+    ControlledPawn->SetActorTransform(FTransform(TargetQuat, FinalLocation));
+
+
+}
+
+// TODO: Rewrite with using FTransform interpolation, not interpolation of location and rotation separately.
+void ACubePlayerController::CooldownkDiagonalRotation(float DeltaTime)
 {
 
     APawn* ControlledPawn = GetPawn();
@@ -159,7 +234,7 @@ void ACubePlayerController::QuickDiagonalRotation(float DeltaTime)
     FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/
 
     FQuat DeltaQuatCorrect = FQuat(RollAxis, FMath::DegreesToRadians(90.f));
-    FQuat NewRotationCorrect = DeltaQuatCorrect * StartRotation.Quaternion();
+    FQuat NewRotationCorrect = DeltaQuatCorrect + StartRotation.Quaternion();
     FVector RotatedOffsetCorrect = Offset.RotateAngleAxis(90.f, RollAxis); /*rotating around start vector point(in my case pivot)*/
 
 
@@ -220,6 +295,8 @@ void ACubePlayerController::Moving(const FVector& Direction)
         return;
 
     bIsMoving = true;
+    UE_LOG(LogTemp, Warning, TEXT("Rolling start"));
+
     CurrentRollTime = 0.f;
 
     StartLocation = ControlledPawn->GetActorLocation();
@@ -243,6 +320,16 @@ void ACubePlayerController::Moving(const FVector& Direction)
     RollPivot = StartLocation
         + (Direction * ActorCubeSize)
         - (FVector::UpVector * ActorCubeSize);
+
+
+    TargetQuat =
+        FQuat(RollAxis, FMath::DegreesToRadians(TargetAngle))
+        * StartRotation.Quaternion();
+
+
+    FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/
+    FVector RotatedOffset = Offset.RotateAngleAxis(TargetAngle, RollAxis); /*rotating around start vector point(in my case pivot)*/
+    FinalLocation = RollPivot + RotatedOffset;
 }
 
 void ACubePlayerController::DiagonalMoving(const FVector& DirectionA, const FVector& DirectionB)
@@ -282,6 +369,15 @@ void ACubePlayerController::DiagonalMoving(const FVector& DirectionA, const FVec
         + DirectionA * ActorCubeSize
         + DirectionB * ActorCubeSize
         - FVector::UpVector * ActorCubeSize;
+
+    TargetQuat =
+        FQuat(RollAxis, FMath::DegreesToRadians(TargetAngle))
+        * StartRotation.Quaternion();
+
+
+    FVector Offset = StartLocation - RollPivot; /*vector in pivot start and direction to start location(cube center). Vector direction is important*/
+    FVector RotatedOffset = Offset.RotateAngleAxis(TargetAngle, RollAxis); /*rotating around start vector point(in my case pivot)*/
+    FinalLocation = RollPivot + RotatedOffset;
 }
 
 void ACubePlayerController::DrawCubeVertex()
